@@ -1,0 +1,119 @@
+<div class="container">
+  <div class="shape"></div>
+</div>
+
+<style>
+  .container {
+    width: 600px;
+    height: 400px;
+    border: 2px solid black;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shape {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: grab;
+    background-color: red;
+    position: absolute;
+  }
+</style>
+
+<script>
+  const shape = document.querySelector(".shape");
+  const container = document.querySelector(".container");
+
+  let posX = 100;
+  let posY = 100;
+  let velX = 0;
+  let velY = 0;
+  let gravity = 0.5;
+  let bounce = 0.7;
+  let resistance = 0.01;
+  let isDragging = false;
+  let called = false;
+
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  // e: Event
+  shape.addEventListener("mousedown", (e) => {
+    isDragging = true; //Stops animation from running
+    shape.style.cursor = "grabbing"; //Shows 'grabbing' mouse cursor
+    lastMouseX = e.clientX; //Last recorded position X
+    lastMouesY = e.clientY; //Last recorded position Y
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (isDragging) {
+      //When the shape is being moved...
+      //Calculate 'velocity': (currPositionX - lastPositionX);
+      //e.g., dx = 150 - 200 = -50px per animation frame
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+
+      //Update current position to reflect movement
+      //e.g., original position = 200
+      //      dx = -50px (Moved Backwards);
+      // New posX = posX (200) - dx (-50) = 150;
+      posX += dx;
+      posY += dy;
+
+      //Update the lastMouse variables
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+
+      //Assign dx and dy as velocity (Pixel change per frame)
+      velX = dx;
+      velY = dy;
+
+      //Update the shapes current position;
+      shape.style.transformation = `translate(${posX}px, ${posY}px)`;
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false; //Begin applying physics to ball
+  });
+
+  function animate() {
+    if (!isDragging) {
+      //This would not run when the mouse is being moved
+      velY += gravity; //Continually apply 'gravity' to the ball.
+      if (velX > 0) {
+        //This applies 'friction' to the ball when it's rolling on the ground. The ball's velX cannot be negative, otherwise it'll roll backwards towards X = 0;
+        velX -= 0.001;
+      }
+      //Update positions based on velocity
+      posX += velX;
+      posY += velY;
+    }
+
+    // Bounce off walls
+    if (posX + shape.offsetWidth > container.offsetWidth || posX < 0) {
+      velX *= -bounce;
+
+      //Math.max will stop the ball from being dragged out of bounds (as the min MAX has to be 0)
+      //Math.max works as (minVal, min(min: posX, max: container-width - shape-width));
+      //If we just specified the bounds of the box - the shape could partialy go through it.
+      posX = Math.max(
+        0,
+        Math.min(posX, container.offsetWidth - shape.offsetWidth)
+      );
+    }
+
+    //Math.max works as (minVal, min(min: posX, max: container-height - shape height))
+    if (posY + shape.offsetHeight > container.offsetHeight || posY < 0) {
+      velY *= -bounce;
+      posY = Math.min(posY, container.offsetHeight - shape.offsetHeight);
+    }
+
+    shape.style.transform = `translate(${posX}px, ${posY}px)`;
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
