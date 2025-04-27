@@ -1,0 +1,201 @@
+<div class="container">
+  <button onClick="createBall()">Create Ball</button>
+  <button id="gravBtn" onClick="toggleGravity()">Disable Gravity</button>
+  <button id="fricBtn" onClick="toggleFriction()">Disable Friction</button>
+</div>
+
+<style>
+  .container {
+    width: 1000px;
+    height: 1000px;
+    border: 2px solid black;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shape {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: grab;
+    background-color: red;
+    position: absolute;
+  }
+</style>
+
+<script>
+  const container = document.querySelector(".container");
+  const balls = [];
+
+  let gravity = 0.7;
+  let friction = 0.002;
+  let bounce = 0.7;
+  let draggingBall = null;
+  let gravityEnabled = true;
+  let frictionEnabled = true;
+
+  const gravityToggleBtn = document.getElementById("gravBtn");
+
+  function toggleGravity() {
+    gravityEnabled = !gravityEnabled;
+
+    if (gravityEnabled == false) {
+      gravity = 0;
+    } else {
+      gravity = 0.7;
+    }
+    gravityToggleBtn.textContent = gravityEnabled
+      ? "Disable Gravity"
+      : "Enable Gravity";
+  }
+
+  const frictionToggleBtn = document.getElementById("fricBtn");
+
+  function toggleFriction() {
+    frictionEnabled = !frictionEnabled;
+    if (frictionEnabled == false) {
+      friction = 0;
+    } else {
+      friction = 0.002;
+    }
+    frictionToggleBtn.textContent = frictionEnabled
+      ? "Disable Friction"
+      : "Enable Friction;";
+  }
+
+  class Ball {
+    constructor(
+      height = 50,
+      width = 50,
+      posX = 100,
+      posY = 100,
+      velX = 0,
+      velY = 0
+    ) {
+      this.height = height;
+      this.width = width;
+      this.posX = posX;
+      this.posY = posY;
+      this.velX = velX;
+      this.velY = velY;
+      this.element = this.createBallElement();
+    }
+
+    createBallElement() {
+      const ball = document.createElement("div");
+      ball.classList.add("shape");
+      ball.style.left = this.posX + "px";
+      ball.style.top = this.posY + "px";
+      container.appendChild(ball);
+
+      ball.addEventListener("mousedown", (e) => {
+        this.isDragging = true; //Stops animation from running
+        draggingBall = this;
+        this.lastMouseX = e.clientX; //Last recorded position X
+        this.lastMouseY = e.clientY; //Last recorded position Y
+        this.element.style.cursor = "grabbing"; //Shows 'grabbing' mouse cursor
+      });
+
+      return ball;
+    }
+
+    updatePosition() {
+      if (this.isDragging) return;
+      //This would not run when the mouse is being moved
+      this.velY += gravity; //Continually apply 'gravity' to the ball.
+
+      if (frictionEnabled) {
+        if (this.velX > 0) {
+          //This applies 'friction' to the ball when it's rolling on the ground. The ball's velX cannot be negative, otherwise it'll roll backwards towards X = 0;
+
+          this.velX -= friction;
+        }
+      }
+      //Update positions based on velocity
+      this.posX += this.velX;
+      this.posY += this.velY;
+      // Bounce off walls
+      if (this.posX + this.width > container.offsetWidth || this.posX < 0) {
+        if (frictionEnabled) {
+          this.velX *= -bounce;
+        } else {
+          this.velX *= -1;
+        }
+
+        //Math.max will stop the ball from being dragged out of bounds (as the min MAX has to be 0)
+        //Math.max works as (minVal, min(min: posX, max: container-width - shape-width));
+        //If we just specified the bounds of the box - the shape could partially go through it.
+        this.posX = Math.max(
+          0,
+          Math.min(this.posX, container.offsetWidth - this.width)
+        );
+      }
+
+      //Math.max works as (minVal, min(min: posX, max: container-height - shape height))
+      if (this.posY + this.height > container.offsetHeight || this.posY < 0) {
+        if (frictionEnabled) {
+          this.velY *= -bounce;
+        } else {
+          this.velY *= -1;
+        }
+
+        this.posY = Math.max(
+          0,
+          Math.min(this.posY, container.offsetHeight - this.height)
+        );
+      }
+
+      this.element.style.left = this.posX + "px";
+      this.element.style.top = this.posY + "px";
+    }
+  }
+
+  function createBall() {
+    let ball = new Ball();
+    balls.push(ball);
+    console.log("creating ball: " + ball);
+  }
+
+  document.addEventListener("mousemove", (e) => {
+    if (draggingBall) {
+      //When the shape is being moved...
+      draggingBall.velX = e.clientX - draggingBall.lastMouseX;
+      draggingBall.velY = e.clientY - draggingBall.lastMouseY;
+      //Calculate 'velocity': (currPositionX - lastPositionX);
+      //e.g., dx = 150 - 200 = -50px per animation frame
+      const dx = e.clientX - draggingBall.lastMouseX;
+      const dy = e.clientY - draggingBall.lastMouseY;
+
+      //Update current position to reflect movement
+      //e.g., original position = 200
+      //      dx = -50px (Moved Backwards);
+      // New posX = posX (200) - dx (-50) = 150;
+      draggingBall.posX += dx;
+      draggingBall.posY += dy;
+
+      //Update the lastMouse variables
+      draggingBall.lastMouseX = e.clientX;
+      draggingBall.lastMouseY = e.clientY;
+
+      //Update the shapes current position;
+      draggingBall.element.style.left = draggingBall.posX + "px";
+      draggingBall.element.style.top = draggingBall.posY + "px";
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (draggingBall) {
+      // Keep the calculated velocity when released
+      draggingBall.isDragging = false;
+      draggingBall.element.style.cursor = "grab";
+      draggingBall = null;
+    }
+  });
+
+  function animate() {
+    balls.forEach((ball) => ball.updatePosition());
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
